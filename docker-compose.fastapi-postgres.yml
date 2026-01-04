@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:12.0-alpine
+    container_name: fastapi-postgres
+    volumes:
+      - postgres_data_fastapi:/var/lib/postgresql/data/
+    # Option 1: environment 직접 설정
+    environment:
+      POSTGRES_USER: "fastapi_user"
+      POSTGRES_PASSWORD: "fastapi_password"
+      POSTGRES_DB: "fastapi_db"
+    # Option 2: env_file 사용 
+    # env_file:
+    #   - ./fastapi/.env
+    ports:
+      - "5432:5432"
+    networks:
+      - fastapi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fastapi_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastapi:
+    build: ./fastapi
+    container_name: fastapi-app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./fastapi:/backend
+    # Option 1: environment 직접 설정
+    environment:
+      - DATABASE_URL=postgresql://fastapi_user:fastapi_password@db:5432/fastapi_db
+      - DEBUG=True
+      - LOG_LEVEL=info
+    # Option 2: env_file 사용 
+    # env_file:
+    #   - ./fastapi/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - fastapi-network
+    develop:
+      watch:
+        - path: ./fastapi/app
+          target: /backend/app
+          action: sync+restart
+        - path: ./fastapi/requirements.txt
+          target: /backend/requirements.txt
+          action: rebuild
+
+volumes:
+  postgres_data_fastapi:
+
+networks:
+  fastapi-network:
+    driver: bridge
+

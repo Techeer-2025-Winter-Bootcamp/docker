@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:12.0-alpine
+    container_name: django-postgres
+    volumes:
+      - postgres_data_django:/var/lib/postgresql/data/
+    # Option 1: environment 직접 설정
+    environment:
+      POSTGRES_USER: "django_user"
+      POSTGRES_PASSWORD: "django_password"
+      POSTGRES_DB: "django_db"
+    # Option 2: env_file 사용 
+    # env_file:
+    #   - ./django/.env
+    ports:
+      - "5434:5432"
+    networks:
+      - django-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  django:
+    build: ./django
+    container_name: django-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./django:/backend
+    # Option 1: environment 직접 설정
+    environment:
+      - DATABASE_URL=postgresql://django_user:django_password@db:5432/django_db
+      - DJANGO_SETTINGS_MODULE=backend.settings
+      - DJANGO_SECRET_KEY=your-secret-key-change-in-production
+      - DJANGO_DEBUG=True
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+    # Option 2: env_file 사용 
+    # env_file:
+    #   - ./django/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - django-network
+    develop:
+      watch:
+        - path: ./django
+          target: /backend
+          action: sync+restart
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - db.sqlite3
+        - path: ./django/requirements.txt
+          target: /backend/requirements.txt
+          action: rebuild
+
+volumes:
+  postgres_data_django:
+
+networks:
+  django-network:
+    driver: bridge
+

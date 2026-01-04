@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:12.0-alpine
+    container_name: express-postgres
+    volumes:
+      - postgres_data_express:/var/lib/postgresql/data/
+    # Option 1: environment 직접 설정
+    environment:
+      POSTGRES_USER: "express_user"
+      POSTGRES_PASSWORD: "express_password"
+      POSTGRES_DB: "express_db"
+    # Option 2: env_file 사용 
+    # env_file:
+    #   - ./express/.env
+    ports:
+      - "5433:5432"
+    networks:
+      - express-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U express_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  express:
+    build: ./express
+    container_name: express-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./express:/backend
+      - /backend/node_modules
+    # Option 1: environment 직접 설정
+    environment:
+      - DATABASE_URL=postgresql://express_user:express_password@db:5432/express_db
+      - NODE_ENV=development
+      - PORT=3000
+    # Option 2: env_file 사용 
+    # env_file:
+    #   - ./express/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - express-network
+    develop:
+      watch:
+        - path: ./express/src
+          target: /backend/src
+          action: sync+restart
+        - path: ./express/package.json
+          target: /backend/package.json
+          action: rebuild
+        - path: ./express/package-lock.json
+          target: /backend/package-lock.json
+          action: rebuild
+
+volumes:
+  postgres_data_express:
+
+networks:
+  express-network:
+    driver: bridge
+
