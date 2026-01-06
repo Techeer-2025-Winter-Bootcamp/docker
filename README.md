@@ -49,7 +49,7 @@ docker rm my-nginx
 - `docker logs`: 컨테이너 로그 확인
 ---
 
-## 2. Dockerfile로 단일 컨테이너 실행∂
+## 2. Dockerfile로 단일 컨테이너 실행
 
 FastAPI 애플리케이션을 Dockerfile로 이미지화하고 실행합니다.
 
@@ -156,7 +156,7 @@ volumes:
 
 ```bash
 # 1. 프로젝트 루트로 이동
-cd /Users/jungeun/Documents/docker
+cd /Users/Documents/docker
 
 # 2. 서비스 빌드 및 실행
 docker compose up -d
